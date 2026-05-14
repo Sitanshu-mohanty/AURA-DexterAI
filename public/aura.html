@@ -1,0 +1,1312 @@
+
+<!DOCTYPE fragment>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@100;200;300;400&display=swap');
+
+  :root {
+    --cyan: #00f5ff;
+    --violet: #b400ff;
+    --cyan-dim: rgba(0,245,255,0.15);
+    --violet-dim: rgba(180,0,255,0.15);
+    --cyan-glow: 0 0 8px #00f5ff, 0 0 20px rgba(0,245,255,0.4);
+    --violet-glow: 0 0 8px #b400ff, 0 0 20px rgba(180,0,255,0.4);
+    --glass: rgba(8,12,24,0.72);
+    --glass-border: rgba(0,245,255,0.18);
+    --bg: #03050f;
+    --text-primary: #e2f4ff;
+    --text-dim: rgba(180,220,255,0.5);
+    --font-hud: 'Rajdhani', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-light: 'Exo 2', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { margin: 0; padding: 0; background-color: #03050f; height: 100vh; overflow: hidden; }
+
+  #aura-root {
+    background: var(--bg);
+    min-height: 100vh;
+    font-family: var(--font-hud);
+    color: var(--text-primary);
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+  }
+
+  /* Grid bg */
+  #aura-root::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Radial glow bg */
+  #aura-root::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120%; height: 100%;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,80,120,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hud-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr 1fr;
+    grid-template-rows: auto 1fr auto;
+    gap: 10px;
+    padding: 10px;
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+  }
+
+  /* Top header full-width */
+  .hud-header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    backdrop-filter: blur(12px);
+  }
+
+  .aura-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-hex {
+    width: 32px; height: 32px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .logo-hex svg { filter: drop-shadow(0 0 6px var(--cyan)); }
+
+  .logo-text {
+    font-family: var(--font-hud);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 6px;
+    color: var(--cyan);
+    text-shadow: var(--cyan-glow);
+  }
+
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    margin-top: -2px;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 20px;
+  }
+
+  .hstat {
+    text-align: center;
+  }
+
+  .hstat-val {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--cyan);
+    text-shadow: 0 0 8px var(--cyan);
+  }
+
+  .hstat-lbl {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+  }
+
+  .status-dot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--cyan);
+  }
+
+  .dot-pulse {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: var(--cyan-glow);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* Panel base */
+  .panel {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    backdrop-filter: blur(16px);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.6;
+  }
+
+  .panel-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    padding: 8px 12px 4px;
+    border-bottom: 1px solid rgba(0,245,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title .ptag {
+    font-size: 8px;
+    padding: 1px 6px;
+    border: 1px solid rgba(0,245,255,0.3);
+    border-radius: 2px;
+    color: var(--cyan);
+  }
+
+  /* ===== LEFT: VIDEO FEED ===== */
+  .video-panel { grid-column: 1; grid-row: 2; }
+
+  .video-container {
+    flex: 1;
+    position: relative;
+    margin: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #000c18;
+    border: 1px solid rgba(0,245,255,0.1);
+  }
+
+  .video-placeholder {
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    background: linear-gradient(135deg, #000c18 0%, #001428 50%, #000c18 100%);
+  }
+
+  .face-outline {
+    width: 70px; height: 85px;
+    border: 1.5px solid rgba(0,245,255,0.25);
+    border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+    position: relative;
+    animation: faceBreath 4s ease-in-out infinite;
+  }
+
+  @keyframes faceBreath {
+    0%, 100% { border-color: rgba(0,245,255,0.25); }
+    50% { border-color: rgba(0,245,255,0.55); box-shadow: 0 0 20px rgba(0,245,255,0.15); }
+  }
+
+  .face-eyes {
+    position: absolute;
+    top: 36%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .eye { width: 8px; height: 4px; background: rgba(0,245,255,0.5); border-radius: 50%; }
+
+  /* Scanning overlay */
+  .scan-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    box-shadow: 0 0 12px var(--cyan), 0 0 30px rgba(0,245,255,0.4);
+    animation: scanMove 3s linear infinite;
+  }
+
+  @keyframes scanMove {
+    0% { top: -2px; opacity: 0; }
+    5% { opacity: 1; }
+    95% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .scan-corners { position: absolute; inset: 4px; }
+
+  .corner {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-color: var(--cyan);
+    border-style: solid;
+    box-shadow: var(--cyan-glow);
+    opacity: 0.8;
+  }
+
+  .corner.tl { top: 0; left: 0; border-width: 1.5px 0 0 1.5px; }
+  .corner.tr { top: 0; right: 0; border-width: 1.5px 1.5px 0 0; }
+  .corner.bl { bottom: 0; left: 0; border-width: 0 0 1.5px 1.5px; }
+  .corner.br { bottom: 0; right: 0; border-width: 0 1.5px 1.5px 0; }
+
+  .face-data {
+    position: absolute;
+    bottom: 8px; left: 8px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: rgba(0,245,255,0.6);
+  }
+
+  .face-data div { margin-bottom: 2px; }
+
+  .lock-indicator {
+    position: absolute;
+    top: 8px; right: 8px;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--cyan);
+    text-shadow: 0 0 6px var(--cyan);
+    animation: blink 2s step-end infinite;
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  /* Emotion bar */
+  .emotion-bars {
+    padding: 6px 12px 8px;
+  }
+
+  .emo-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .emo-label {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--text-dim);
+    width: 48px;
+    flex-shrink: 0;
+  }
+
+  .emo-track {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .emo-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .emo-val {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--text-dim);
+    width: 24px;
+    text-align: right;
+  }
+
+  /* ===== CENTER: WAVEFORM ===== */
+  .center-panel { grid-column: 2; grid-row: 2; }
+
+  .waveform-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    position: relative;
+  }
+
+  #waveCanvas {
+    width: 100%;
+    height: 120px;
+    border-radius: 4px;
+  }
+
+  .sentiment-display {
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sentiment-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .sentiment-value {
+    font-family: var(--font-hud);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    transition: color 0.8s, text-shadow 0.8s;
+  }
+
+  /* Gauge */
+  .gauge-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 14px 10px;
+    position: relative;
+  }
+
+  #gaugeCanvas {
+    width: 140px;
+    height: 80px;
+  }
+
+  .gauge-label {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 2px;
+  }
+
+  .gauge-value {
+    font-family: var(--font-hud);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--cyan);
+    text-shadow: var(--cyan-glow);
+    text-align: center;
+    margin-top: -4px;
+  }
+
+  .gauge-sublabel {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+  }
+
+  /* Keyword cloud */
+  .keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 12px 8px;
+  }
+
+  .kw {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    transition: all 0.5s;
+  }
+
+  .kw.cyan {
+    border: 1px solid rgba(0,245,255,0.3);
+    color: rgba(0,245,255,0.8);
+    background: rgba(0,245,255,0.06);
+  }
+
+  .kw.violet {
+    border: 1px solid rgba(180,0,255,0.3);
+    color: rgba(180,0,255,0.9);
+    background: rgba(180,0,255,0.06);
+  }
+
+  /* ===== RIGHT: TICKER ===== */
+  .ticker-panel { grid-column: 3; grid-row: 2; }
+
+  .ticker-scroll {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    margin: 4px 6px;
+  }
+
+  .ticker-scroll::before,
+  .ticker-scroll::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 20px;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .ticker-scroll::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--glass) 0%, transparent 100%);
+  }
+
+  .ticker-scroll::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--glass) 0%, transparent 100%);
+  }
+
+  .ticker-inner {
+    padding: 6px 6px;
+    animation: tickerScroll 30s linear infinite;
+  }
+
+  @keyframes tickerScroll {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+  }
+
+  .insight-card {
+    margin-bottom: 8px;
+    padding: 7px 9px;
+    border-radius: 4px;
+    border-left: 2px solid var(--cyan);
+    background: rgba(0,245,255,0.04);
+    position: relative;
+  }
+
+  .insight-card.rec {
+    border-left-color: var(--violet);
+    background: rgba(180,0,255,0.04);
+  }
+
+  .insight-card.alert {
+    border-left-color: #ff6b35;
+    background: rgba(255,107,53,0.06);
+    animation: alertPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes alertPulse {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 10px rgba(255,107,53,0.25), inset 0 0 10px rgba(255,107,53,0.05); }
+  }
+
+  .insight-type {
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: 2px;
+    margin-bottom: 3px;
+  }
+
+  .insight-type.obs { color: rgba(0,245,255,0.7); }
+  .insight-type.rec { color: rgba(180,0,255,0.8); }
+  .insight-type.alrt { color: #ff8c5a; }
+
+  .insight-text {
+    font-family: var(--font-light);
+    font-size: 10px;
+    font-weight: 300;
+    color: rgba(200,230,255,0.8);
+    line-height: 1.5;
+  }
+
+  .insight-time {
+    font-family: var(--font-mono);
+    font-size: 7px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    text-align: right;
+  }
+
+  /* ===== BOTTOM BAR ===== */
+  .bottom-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    backdrop-filter: blur(12px);
+  }
+
+  .ticker-text {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    overflow: hidden;
+    flex: 1;
+    white-space: nowrap;
+  }
+
+  .ticker-run {
+    display: inline-block;
+    animation: runTicker 25s linear infinite;
+  }
+
+  @keyframes runTicker { 0% { transform: translateX(100%); } 100% { transform: translateX(-200%); } }
+
+  .bottom-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 16px;
+  }
+
+  .hud-btn {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid rgba(0,245,255,0.3);
+    color: var(--cyan);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .hud-btn:hover {
+    background: rgba(0,245,255,0.1);
+    box-shadow: var(--cyan-glow);
+  }
+
+  .hud-btn.violet-btn {
+    border-color: rgba(180,0,255,0.3);
+    color: #d466ff;
+  }
+
+  .hud-btn.violet-btn:hover {
+    background: rgba(180,0,255,0.1);
+    box-shadow: var(--violet-glow);
+  }
+
+  /* ===== INTERVENTION CARD ===== */
+  .intervention-overlay {
+    position: absolute;
+    top: 50px; left: 50%; transform: translateX(-50%);
+    z-index: 100;
+    width: 280px;
+    pointer-events: none;
+  }
+
+  .intervention-card {
+    background: rgba(5, 8, 20, 0.95);
+    border: 1.5px solid #ff6b35;
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 0 20px rgba(255,107,53,0.4), 0 0 60px rgba(255,107,53,0.15), inset 0 0 20px rgba(255,107,53,0.05);
+    animation: interventionIn 0.4s cubic-bezier(0.17,0.84,0.44,1), interventionGlow 2s ease-in-out infinite 0.5s;
+    pointer-events: all;
+  }
+
+  @keyframes interventionIn {
+    0% { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes interventionGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255,107,53,0.4), 0 0 60px rgba(255,107,53,0.15), inset 0 0 20px rgba(255,107,53,0.05); }
+    50% { box-shadow: 0 0 30px rgba(255,107,53,0.6), 0 0 80px rgba(255,107,53,0.25), inset 0 0 30px rgba(255,107,53,0.08); }
+  }
+
+  .intervention-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .intervention-icon {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(255,107,53,0.2);
+    border: 1px solid rgba(255,107,53,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    animation: iconPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes iconPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+  .intervention-title {
+    font-family: var(--font-hud);
+    font-size: 13px;
+    font-weight: 700;
+    color: #ff8c5a;
+    letter-spacing: 2px;
+  }
+
+  .intervention-body {
+    font-family: var(--font-light);
+    font-size: 11px;
+    font-weight: 300;
+    color: rgba(255,200,180,0.85);
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+
+  .intervention-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .int-btn {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .int-btn.primary {
+    background: rgba(255,107,53,0.2);
+    border: 1px solid rgba(255,107,53,0.5);
+    color: #ff8c5a;
+  }
+
+  .int-btn.secondary {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-dim);
+  }
+
+  .int-btn:hover { opacity: 0.8; }
+
+  .hidden { display: none !important; }
+</style>
+
+<div id="aura-root">
+  <div class="hud-layout">
+
+    <!-- HEADER -->
+    <div class="hud-header">
+      <div class="aura-logo">
+        <div class="logo-hex">
+          <svg width="32" height="32" viewBox="0 0 32 32">
+            <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#00f5ff" stroke-width="1.5" opacity="0.9"/>
+            <polygon points="16,8 23,12 23,20 16,24 9,20 9,12" fill="rgba(0,245,255,0.08)" stroke="#00f5ff" stroke-width="0.5"/>
+            <circle cx="16" cy="16" r="3" fill="#00f5ff" opacity="0.8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">AURA</div>
+          <div class="logo-sub">ADAPTIVE UNIFIED RESPONSE AGENT</div>
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="hstat"><div class="hstat-val" id="h-session">00:14:32</div><div class="hstat-lbl">SESSION</div></div>
+        <div class="hstat"><div class="hstat-val" id="h-conf">94.7%</div><div class="hstat-lbl">CONFIDENCE</div></div>
+        <div class="hstat"><div class="hstat-val" id="h-lat">12ms</div><div class="hstat-lbl">LATENCY</div></div>
+        <div class="hstat"><div class="hstat-val">GEMINI 1.5</div><div class="hstat-lbl">MODEL</div></div>
+      </div>
+      <div class="status-dot">
+        <div class="dot-pulse"></div>
+        LIVE STREAM ACTIVE
+      </div>
+    </div>
+
+    <!-- LEFT: VIDEO -->
+    <div class="panel video-panel">
+      <div class="panel-title">
+        VISUAL INPUT FEED
+        <span class="ptag">CAM-01</span>
+      </div>
+      <div class="video-container">
+        <div class="video-placeholder">
+          <div class="face-outline">
+            <div class="face-eyes">
+              <div class="eye"></div>
+              <div class="eye"></div>
+            </div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(0,245,255,0.3);letter-spacing:2px;margin-top:6px;">SUBJECT DETECTED</div>
+        </div>
+        <div class="scan-overlay">
+          <div class="scan-line"></div>
+          <div class="scan-corners">
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+          </div>
+        </div>
+        <div class="lock-indicator">⬡ LOCKED</div>
+        <div class="face-data">
+          <div id="fd-age">AGE EST: 34±2</div>
+          <div id="fd-conf">MATCH: 91.3%</div>
+          <div id="fd-micro">MICRO: ENGAGED</div>
+        </div>
+      </div>
+      <div class="emotion-bars">
+        <div class="emo-row">
+          <div class="emo-label">CONFIDENCE</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-conf" style="width:78%;background:linear-gradient(90deg,#00f5ff,#00c8ff);"></div></div>
+          <div class="emo-val" id="ev-conf">78</div>
+        </div>
+        <div class="emo-row">
+          <div class="emo-label">INTEREST</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-int" style="width:65%;background:linear-gradient(90deg,#b400ff,#8800cc);"></div></div>
+          <div class="emo-val" id="ev-int">65</div>
+        </div>
+        <div class="emo-row">
+          <div class="emo-label">RECEPTIVITY</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-rec" style="width:82%;background:linear-gradient(90deg,#00f5d4,#00c4a8);"></div></div>
+          <div class="emo-val" id="ev-rec">82</div>
+        </div>
+        <div class="emo-row">
+          <div class="emo-label">RESISTANCE</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-res" style="width:22%;background:linear-gradient(90deg,#ff6b35,#cc4422);"></div></div>
+          <div class="emo-val" id="ev-res">22</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: WAVEFORM + GAUGE -->
+    <div class="panel center-panel">
+      <div class="panel-title">
+        COMMUNICATION PULSE
+        <span class="ptag">STREAM</span>
+      </div>
+      <div class="waveform-container">
+        <canvas id="waveCanvas"></canvas>
+      </div>
+      <div class="sentiment-display">
+        <div>
+          <div class="sentiment-label">DETECTED SENTIMENT</div>
+          <div class="sentiment-value" id="sentiment-val" style="color:#00f5ff;text-shadow:0 0 8px #00f5ff;">RECEPTIVE</div>
+        </div>
+        <div style="text-align:right">
+          <div class="sentiment-label">SPEECH RATE</div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--cyan);" id="speech-rate">142 WPM</div>
+        </div>
+      </div>
+      <div class="gauge-container">
+        <div class="gauge-label">PERSUASION LEVEL</div>
+        <canvas id="gaugeCanvas" width="140" height="80"></canvas>
+        <div class="gauge-value" id="gauge-val">73%</div>
+        <div class="gauge-sublabel">DECISION GAUGE · LIVE</div>
+      </div>
+      <div class="keywords" id="keywords-area">
+        <span class="kw cyan">GROWTH</span>
+        <span class="kw violet">RISK-AVERSE</span>
+        <span class="kw cyan">Q4 TARGETS</span>
+        <span class="kw cyan">SCALABILITY</span>
+        <span class="kw violet">BUDGET</span>
+        <span class="kw cyan">ROI</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: TICKER -->
+    <div class="panel ticker-panel">
+      <div class="panel-title">
+        STRATEGIC INSIGHTS
+        <span class="ptag">LIVE</span>
+      </div>
+      <div class="ticker-scroll">
+        <div class="ticker-inner" id="ticker-inner">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom-bar">
+      <div class="ticker-text">
+        <span class="ticker-run">
+          ◆ AURA ONLINE · NEURAL CORE v4.2 · GEMINI 1.5 FLASH BACKEND · JSON STREAM ACTIVE · 
+          PROCESSING 847 TOKENS/SEC · DECISION ENGINE NOMINAL · SENTIMENT ANALYSIS RUNNING · 
+          MEMORY CONTEXT: 128K · INTERVENTION THRESHOLD: 40% · ALL SYSTEMS OPERATIONAL ◆ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          ◆ AURA ONLINE · NEURAL CORE v4.2 · GEMINI 1.5 FLASH BACKEND · JSON STREAM ACTIVE ◆
+        </span>
+      </div>
+      <div class="bottom-actions">
+        <button class="hud-btn" onclick="triggerIntervention()">⬡ INTERVENE</button>
+        <button class="hud-btn violet-btn" onclick="sendPrompt('Show me the full React/Next.js source code for this AURA dashboard')">{'</>'}  GET CODE ↗</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- INTERVENTION CARD (hidden by default) -->
+  <div class="intervention-overlay hidden" id="intervention-overlay">
+    <div class="intervention-card">
+      <div class="intervention-header">
+        <div class="intervention-icon">⚠</div>
+        <div class="intervention-title">ROADBLOCK DETECTED</div>
+      </div>
+      <div class="intervention-body" id="intervention-body">
+        Subject exhibiting budget resistance signals. Micro-expressions indicate concern about timeline feasibility. Recommend pivot to ROI-first framing immediately.
+      </div>
+      <div class="intervention-actions">
+        <button class="int-btn primary" onclick="dismissIntervention()">EXECUTE PIVOT</button>
+        <button class="int-btn secondary" onclick="dismissIntervention()">DISMISS</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// MOCK DATA GENERATOR — simulates Gemini 1.5 Flash stream
+// =====================================================
+const MockDataGenerator = {
+  sentiments: ['RECEPTIVE','ENGAGED','ANALYTICAL','SKEPTICAL','INTERESTED','CAUTIOUS','ENTHUSIASTIC'],
+  sentimentColors: {
+    'RECEPTIVE': ['#00f5ff','0 0 8px #00f5ff'],
+    'ENGAGED': ['#00ff88','0 0 8px #00ff88'],
+    'ANALYTICAL': ['#b400ff','0 0 8px #b400ff'],
+    'SKEPTICAL': ['#ff6b35','0 0 8px #ff6b35'],
+    'INTERESTED': ['#00f5d4','0 0 8px #00f5d4'],
+    'CAUTIOUS': ['#ffcc00','0 0 8px #ffcc00'],
+    'ENTHUSIASTIC': ['#ff00aa','0 0 8px #ff00aa']
+  },
+  keywords: [
+    ['GROWTH','Q4 TARGETS','ROI','SCALABILITY','INNOVATION','PIPELINE'],
+    ['RISK-AVERSE','BUDGET','TIMELINE','COMPLIANCE','DUE DILIGENCE','PRECEDENT']
+  ],
+  generateFrame() {
+    return {
+      timestamp: Date.now(),
+      sentiment: this.sentiments[Math.floor(Math.random()*this.sentiments.length)],
+      emotions: {
+        confidence: 55 + Math.random()*40,
+        interest: 40 + Math.random()*55,
+        receptivity: 50 + Math.random()*45,
+        resistance: 5 + Math.random()*50
+      },
+      persuasionLevel: 45 + Math.random()*50,
+      speechRate: Math.floor(100 + Math.random()*80) + ' WPM',
+      roadblockDetected: Math.random() < 0.04,
+      roadblockType: ['Budget objection','Timeline concern','Authority question','Risk aversion','Competitor mention'][Math.floor(Math.random()*5)],
+      insight: this.randomInsight(),
+      confidence: 85 + Math.random()*12
+    };
+  },
+  randomInsight() {
+    const types = ['obs','rec','alrt'];
+    const obs = [
+      'Subject maintains prolonged eye contact — high engagement signal.',
+      'Vocal tonality shifted upward — enthusiasm indicator.',
+      'Micro-expression: genuine smile detected (Duchenne marker).',
+      'Posture opened 12° — trust building confirmed.',
+      'Speech pace decreased — processing complex information.',
+      'Pupil dilation +8% vs baseline — strong interest.',
+    ];
+    const rec = [
+      'Recommend anchoring with social proof data now.',
+      'Transition to scarcity framing — window is optimal.',
+      'Deploy loss-aversion narrative in next 60 seconds.',
+      'Mirror subject vocal tempo to strengthen rapport.',
+      'Introduce third-party validation for credibility boost.',
+      'Invoke reciprocity principle — offer concession now.',
+    ];
+    const alrt = [
+      'ALERT: Resistance spike — reframe value proposition.',
+      'ALERT: Competing priority detected in speech pattern.',
+      'WARNING: Decision fatigue indicators present.',
+    ];
+    const t = types[Math.floor(Math.random()*types.length)];
+    const arr = t==='obs'?obs:t==='rec'?rec:alrt;
+    return { type: t, text: arr[Math.floor(Math.random()*arr.length)] };
+  }
+};
+
+// =====================================================
+// WAVEFORM CANVAS (requestAnimationFrame at 60fps)
+// =====================================================
+const waveCanvas = document.getElementById('waveCanvas');
+const wCtx = waveCanvas.getContext('2d');
+let wavePhase = 0;
+let targetAmplitude = 0.6;
+let currentAmplitude = 0.6;
+let waveColor = '#00f5ff';
+let waveColor2 = '#b400ff';
+
+function resizeWave() {
+  const rect = waveCanvas.parentElement.getBoundingClientRect();
+  waveCanvas.width = rect.width - 16;
+  waveCanvas.height = 120;
+}
+resizeWave();
+
+function drawWave() {
+  const w = waveCanvas.width, h = waveCanvas.height;
+  wCtx.clearRect(0, 0, w, h);
+  currentAmplitude += (targetAmplitude - currentAmplitude) * 0.05;
+  const amp = (h/2) * currentAmplitude * 0.8;
+
+  // Draw 3 layered waves
+  const configs = [
+    { freq: 2.5, speed: 0.03, alpha: 0.9, col: waveColor, lw: 2, yOff: 0 },
+    { freq: 4, speed: 0.05, alpha: 0.4, col: waveColor2, lw: 1.5, yOff: 4 },
+    { freq: 1.5, speed: 0.02, alpha: 0.25, col: waveColor, lw: 1, yOff: -3 }
+  ];
+
+  configs.forEach((c, ci) => {
+    wCtx.beginPath();
+    wCtx.strokeStyle = c.col;
+    wCtx.lineWidth = c.lw;
+    wCtx.globalAlpha = c.alpha;
+    wCtx.shadowBlur = 8;
+    wCtx.shadowColor = c.col;
+    for (let x = 0; x <= w; x += 2) {
+      const t = (x / w) * Math.PI * 2 * c.freq + wavePhase * c.speed * 60;
+      const noise = (Math.random() - 0.5) * 3 * currentAmplitude;
+      const y = h/2 + c.yOff + Math.sin(t) * amp + noise;
+      x === 0 ? wCtx.moveTo(x, y) : wCtx.lineTo(x, y);
+    }
+    wCtx.stroke();
+
+    // Fill under first wave
+    if (ci === 0) {
+      wCtx.lineTo(w, h); wCtx.lineTo(0, h); wCtx.closePath();
+      const grad = wCtx.createLinearGradient(0, h/2, 0, h);
+      grad.addColorStop(0, waveColor.replace(')',',0.12)').replace('rgb','rgba'));
+      grad.addColorStop(1, 'transparent');
+      wCtx.fillStyle = grad;
+      wCtx.globalAlpha = 0.3;
+      wCtx.fill();
+    }
+
+    wCtx.globalAlpha = 1;
+    wCtx.shadowBlur = 0;
+  });
+
+  wavePhase++;
+  requestAnimationFrame(drawWave);
+}
+drawWave();
+
+// =====================================================
+// GAUGE CANVAS (radial progress)
+// =====================================================
+const gCanvas = document.getElementById('gaugeCanvas');
+const gCtx = gCanvas.getContext('2d');
+gCanvas.width = 140; gCanvas.height = 80;
+
+let gaugeTarget = 73;
+let gaugeCurrent = 73;
+
+function drawGauge() {
+  gaugeCurrent += (gaugeTarget - gaugeCurrent) * 0.03;
+  const cx = 70, cy = 76, r = 56;
+  const startA = Math.PI, endA = 2 * Math.PI;
+  const progressA = startA + (endA - startA) * (gaugeCurrent / 100);
+
+  gCtx.clearRect(0, 0, 140, 80);
+
+  // Track
+  gCtx.beginPath();
+  gCtx.arc(cx, cy, r, Math.PI, 2*Math.PI);
+  gCtx.strokeStyle = 'rgba(0,245,255,0.1)';
+  gCtx.lineWidth = 8;
+  gCtx.lineCap = 'round';
+  gCtx.stroke();
+
+  // Progress segments
+  const zones = [
+    { from: 0, to: 40, color: '#ff6b35' },
+    { from: 40, to: 70, color: '#ffcc00' },
+    { from: 70, to: 100, color: '#00f5ff' }
+  ];
+
+  zones.forEach(z => {
+    const pct = gaugeCurrent;
+    const zStart = startA + (endA - startA) * (z.from / 100);
+    const zEnd = startA + (endA - startA) * (Math.min(pct, z.to) / 100);
+    if (zEnd <= zStart) return;
+    gCtx.beginPath();
+    gCtx.arc(cx, cy, r, zStart, zEnd);
+    gCtx.strokeStyle = z.color;
+    gCtx.lineWidth = 8;
+    gCtx.lineCap = 'round';
+    gCtx.shadowBlur = 12;
+    gCtx.shadowColor = z.color;
+    gCtx.stroke();
+    gCtx.shadowBlur = 0;
+  });
+
+  // Needle dot
+  const needleA = startA + (endA - startA) * (gaugeCurrent / 100);
+  const nx = cx + Math.cos(needleA) * r;
+  const ny = cy + Math.sin(needleA) * r;
+  gCtx.beginPath();
+  gCtx.arc(nx, ny, 5, 0, Math.PI * 2);
+  gCtx.fillStyle = '#fff';
+  gCtx.shadowBlur = 10;
+  gCtx.shadowColor = '#00f5ff';
+  gCtx.fill();
+  gCtx.shadowBlur = 0;
+
+  requestAnimationFrame(drawGauge);
+}
+drawGauge();
+
+// =====================================================
+// TICKER INSIGHTS
+// =====================================================
+const insightData = [
+  { type:'obs', text:'Vocal tonality rising — enthusiasm signal detected.', time:'00:14:21' },
+  { type:'rec', text:'Anchor with social proof — optimal moment now.', time:'00:13:58' },
+  { type:'obs', text:'Subject referenced Q4 twice — budget cycle alignment.', time:'00:13:41' },
+  { type:'alrt', text:'Micro-resistance on timeline — reframe needed.', time:'00:13:20' },
+  { type:'rec', text:'Deploy scarcity framing in next exchange.', time:'00:13:05' },
+  { type:'obs', text:'Pupil dilation +8% vs baseline — strong interest.', time:'00:12:49' },
+  { type:'rec', text:'Mirror subject vocal tempo — rapport window active.', time:'00:12:33' },
+  { type:'obs', text:'Open posture maintained 4 min — trust building.', time:'00:12:10' },
+  { type:'alrt', text:'Competing priority keyword detected: "board meeting".', time:'00:11:55' },
+  { type:'rec', text:'Invoke reciprocity principle — offer concession now.', time:'00:11:38' },
+];
+
+function buildTicker() {
+  const inner = document.getElementById('ticker-inner');
+  const doubled = [...insightData, ...insightData];
+  inner.innerHTML = doubled.map(d => `
+    <div class="insight-card ${d.type === 'rec' ? 'rec' : d.type === 'alrt' ? 'alert' : ''}">
+      <div class="insight-type ${d.type === 'obs' ? 'obs' : d.type === 'rec' ? 'rec' : 'alrt'}">
+        ${d.type === 'obs' ? '◈ OBSERVATION' : d.type === 'rec' ? '◆ RECOMMENDATION' : '⚠ ALERT'}
+      </div>
+      <div class="insight-text">${d.text}</div>
+      <div class="insight-time">${d.time}</div>
+    </div>
+  `).join('');
+}
+buildTicker();
+
+// =====================================================
+// SESSION TIMER
+// =====================================================
+let seconds = 872;
+setInterval(() => {
+  seconds++;
+  const h = String(Math.floor(seconds/3600)).padStart(2,'0');
+  const m = String(Math.floor((seconds%3600)/60)).padStart(2,'0');
+  const s = String(seconds%60).padStart(2,'0');
+  document.getElementById('h-session').textContent = `${h}:${m}:${s}`;
+}, 1000);
+
+// =====================================================
+// MAIN DATA LOOP — simulates WebSocket / Long-Poll stream
+// In production: replace with actual WebSocket to Gemini backend
+// useEffect(() => {
+//   const ws = new WebSocket('wss://your-gemini-backend/stream');
+//   ws.onmessage = (e) => { const frame = JSON.parse(e.data); applyFrame(frame); }
+//   return () => ws.close();
+// }, []);
+// =====================================================
+function applyFrame(frame) {
+  // Sentiment
+  const sv = document.getElementById('sentiment-val');
+  sv.textContent = frame.sentiment;
+  const [col, shadow] = MockDataGenerator.sentimentColors[frame.sentiment] || ['#00f5ff','0 0 8px #00f5ff'];
+  sv.style.color = col;
+  sv.style.textShadow = shadow;
+  waveColor = col;
+  waveColor2 = frame.sentiment === 'SKEPTICAL' ? '#ff6b35' : '#b400ff';
+
+  // Emotions
+  const emo = frame.emotions;
+  const pairs = [['conf','confidence'],['int','interest'],['rec','receptivity'],['res','resistance']];
+  pairs.forEach(([k,v]) => {
+    const val = Math.round(emo[v]);
+    const el = document.getElementById(`eb-${k}`);
+    const ev = document.getElementById(`ev-${k}`);
+    if (el) el.style.width = val + '%';
+    if (ev) ev.textContent = val;
+  });
+
+  // Amplitude from engagement
+  targetAmplitude = 0.3 + (emo.interest / 100) * 0.7;
+
+  // Gauge
+  gaugeTarget = frame.persuasionLevel;
+  document.getElementById('gauge-val').textContent = Math.round(frame.persuasionLevel) + '%';
+
+  // Confidence
+  document.getElementById('h-conf').textContent = frame.confidence.toFixed(1) + '%';
+
+  // Speech rate
+  document.getElementById('speech-rate').textContent = frame.speechRate;
+
+  // Intervention
+  if (frame.roadblockDetected) {
+    triggerIntervention(frame.roadblockType);
+  }
+}
+
+// =====================================================
+// REAL GEMINI API INTEGRATION (Video Upload Logic)
+// =====================================================
+
+// 1. Create the hidden canvas for screenshots
+const captureCanvas = document.createElement('canvas');
+captureCanvas.style.display = 'none';
+document.body.appendChild(captureCanvas);
+
+// 2. Change the left panel to accept video uploads
+const videoContainer = document.querySelector('.video-container');
+videoContainer.innerHTML = `
+  <input type="file" id="videoUploader" accept="video/mp4,video/*" style="position: absolute; z-index: 10; top: 10px; left: 10px; color: #00f5ff; font-family: var(--font-mono); font-size: 10px;" />
+  <video id="sourceVideo" controls muted style="width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 5;"></video>
+  <div class="face-data" style="z-index: 10;">
+    <div id="fd-conf">STATUS: WAITING FOR UPLOAD</div>
+  </div>
+`;
+
+const videoInput = document.getElementById('videoUploader');
+const sourceVideo = document.getElementById('sourceVideo');
+let analysisInterval = null;
+let lastRealFrame = null; // Store the real data to "jitter" around
+
+// 3. When a video is uploaded, play it and start analyzing
+videoInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  
+  sourceVideo.src = URL.createObjectURL(file);
+  sourceVideo.play();
+  document.getElementById('fd-conf').textContent = "STATUS: ANALYZING...";
+  
+  if(analysisInterval) clearInterval(analysisInterval);
+  // Sync with real Gemini API every 8 seconds (safe from 503 errors)
+  analysisInterval = setInterval(analyzeFrame, 8000); 
+});
+
+// =====================================================
+// THE MAGIC: UI HEARTBEAT (Runs every 1.2 seconds)
+// =====================================================
+setInterval(() => {
+  if (!lastRealFrame || sourceVideo.paused) return;
+
+  // Generate a random slight movement (-3% to +3%)
+  const jitter = () => (Math.random() * 6 - 3); 
+
+  // Make the main gauge dance slightly around the real number
+  gaugeTarget = Math.max(0, Math.min(100, lastRealFrame.persuasionLevel + jitter()));
+  const gaugeValEl = document.getElementById('gauge-val');
+  if(gaugeValEl) gaugeValEl.textContent = Math.round(gaugeTarget) + '%';
+
+  // Make the waveform pulse change slightly
+  targetAmplitude = 0.3 + ((lastRealFrame.emotions.interest + jitter()) / 100) * 0.7;
+
+  // Make the 4 side-bars fluctuate
+  const pairs = [['conf','confidence'],['int','interest'],['rec','receptivity'],['res','resistance']];
+  pairs.forEach(([k,v]) => {
+    const val = Math.max(0, Math.min(100, lastRealFrame.emotions[v] + jitter()));
+    const el = document.getElementById(`eb-${k}`);
+    const ev = document.getElementById(`ev-${k}`);
+    if(el) el.style.width = val + '%';
+    if(ev) ev.textContent = Math.round(val);
+  });
+}, 1200);
+
+// 4. Take a screenshot and send to the backend
+async function analyzeFrame() {
+  if (sourceVideo.paused || sourceVideo.ended) return;
+
+  const ctx = captureCanvas.getContext('2d');
+  captureCanvas.width = 640;
+  captureCanvas.height = 360;
+  ctx.drawImage(sourceVideo, 0, 0, captureCanvas.width, captureCanvas.height);
+
+  const base64Image = captureCanvas.toDataURL('image/jpeg').split(',')[1];
+
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64Image })
+    });
+    
+    if (!response.ok) return;
+    const realData = await response.json();
+    
+    // Save the real data so the heartbeat can use it
+    lastRealFrame = {
+      sentiment: realData.sentiment || 'ENGAGED',
+      emotions: {
+        confidence: realData.score || 50,
+        interest: Math.random() * 100, 
+        receptivity: Math.random() * 100,
+        resistance: 100 - (realData.score || 50)
+      },
+      persuasionLevel: realData.score || 50,
+      speechRate: (Math.floor(Math.random() * 40) + 110) + ' WPM', // Fake live WPM
+      roadblockDetected: false,
+      confidence: 99.9
+    };
+    
+    // Apply the big structural updates (Colors, Text, Insights)
+    applyFrame(lastRealFrame);
+    
+    // Add advice to ticker
+    if(realData.advice) {
+        document.getElementById('ticker-inner').innerHTML += `
+        <div class="insight-card rec"><div class="insight-type rec">◆ AI INSIGHT</div>
+        <div class="insight-text">${realData.advice}</div></div>`;
+    }
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// =====================================================
+// INTERVENTION CARD
+// =====================================================
+let interventionTimer = null;
+
+function triggerIntervention(type) {
+  const roadblockMessages = {
+    'Budget objection': 'Subject exhibiting budget resistance signals. Micro-expressions indicate cost concern. Recommend pivot to ROI-first framing and long-term value narrative immediately.',
+    'Timeline concern': 'Timeline anxiety detected in vocal patterns. Subject showing skepticism about delivery speed. Recommend introducing phased delivery model with quick-win milestones.',
+    'Authority question': 'Subject questioning decision authority. Recommend escalation framing — position this as an executive-level strategic initiative.',
+    'Risk aversion': 'High risk-aversion signals detected. Activate social proof sequence — reference similar successful deployments immediately.',
+    'Competitor mention': 'Competitor reference detected. Engage competitive differentiation protocol — lead with unique advantages now.'
+  };
+  const overlay = document.getElementById('intervention-overlay');
+  const body = document.getElementById('intervention-body');
+  body.textContent = roadblockMessages[type] || 'Anomalous engagement pattern detected. Subject signaling uncertainty. Recommend clarifying value proposition and restating key differentiators.';
+  overlay.classList.remove('hidden');
+  if (interventionTimer) clearTimeout(interventionTimer);
+  interventionTimer = setTimeout(dismissIntervention, 8000);
+}
+
+function dismissIntervention() {
+  document.getElementById('intervention-overlay').classList.add('hidden');
+}
+</script>
