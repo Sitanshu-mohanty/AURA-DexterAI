@@ -1,6 +1,74 @@
-
 <!DOCTYPE fragment>
 <style>
+  /* Report Overlay Animations */
+@keyframes reportFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(12px); }
+}
+
+@keyframes panelSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Scorecard Styling */
+.report-overlay {
+  position: fixed; inset: 0; 
+  background: rgba(3, 5, 15, 0.9); 
+  z-index: 10000; 
+  display: flex; align-items: center; justify-content: center; 
+  padding: 20px; 
+  animation: reportFadeIn 0.4s ease forwards;
+}
+
+.scorecard-panel {
+  max-width: 700px; width: 100%; 
+  background: var(--glass);
+  border: 1px solid #ff00aa;
+  box-shadow: 0 0 50px rgba(255, 0, 170, 0.2);
+  display: flex; flex-direction: column;
+  animation: panelSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.scorecard-panel::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, #ff00aa, transparent);
+}
+
+.score-header {
+  font-size: 28px; font-weight: 700; color: #ff00aa;
+  text-transform: uppercase; letter-spacing: 2px;
+  padding: 20px; border-bottom: 1px solid rgba(255,0,170,0.2);
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.report-body {
+  padding: 30px; font-family: var(--font-mono); 
+  overflow-y: auto; flex: 1; color: var(--text-primary);
+}
+
+.stat-row {
+  display: flex; gap: 20px; margin-bottom: 30px;
+}
+
+.stat-item {
+  flex: 1; padding: 15px; background: rgba(0, 245, 255, 0.05);
+  border-left: 3px solid var(--cyan);
+}
+
+.stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+.stat-value { font-size: 20px; color: var(--cyan); }
+  @keyframes scan-flash {
+  0% { background: rgba(0, 245, 255, 0); }
+  50% { background: rgba(0, 245, 255, 0.2); }
+  100% { background: rgba(0, 245, 255, 0); }
+}
+
+.scanning-active {
+  animation: scan-flash 0.5s ease-in-out;
+}
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@100;200;300;400&display=swap');
 
   :root {
@@ -712,7 +780,6 @@
 <div id="aura-root">
   <div class="hud-layout">
 
-    <!-- HEADER -->
     <div class="hud-header">
       <div class="aura-logo">
         <div class="logo-hex">
@@ -731,7 +798,7 @@
         <div class="hstat"><div class="hstat-val" id="h-session">00:14:32</div><div class="hstat-lbl">SESSION</div></div>
         <div class="hstat"><div class="hstat-val" id="h-conf">94.7%</div><div class="hstat-lbl">CONFIDENCE</div></div>
         <div class="hstat"><div class="hstat-val" id="h-lat">12ms</div><div class="hstat-lbl">LATENCY</div></div>
-        <div class="hstat"><div class="hstat-val">GEMINI 1.5</div><div class="hstat-lbl">MODEL</div></div>
+        <div class="hstat"><div class="hstat-val">GEMINI 2.5</div><div class="hstat-lbl">MODEL</div></div>
       </div>
       <div class="status-dot">
         <div class="dot-pulse"></div>
@@ -739,63 +806,61 @@
       </div>
     </div>
 
-    <!-- LEFT: VIDEO -->
     <div class="panel video-panel">
-      <div class="panel-title">
+      <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
         VISUAL INPUT FEED
-        <span class="ptag">CAM-01</span>
-      </div>
-      <div class="video-container">
-        <div class="video-placeholder">
-          <div class="face-outline">
-            <div class="face-eyes">
-              <div class="eye"></div>
-              <div class="eye"></div>
-            </div>
-          </div>
-          <div style="font-family:var(--font-mono);font-size:9px;color:rgba(0,245,255,0.3);letter-spacing:2px;margin-top:6px;">SUBJECT DETECTED</div>
+        <div style="display: flex; gap: 4px;">
+          <button id="btn-live" class="hud-btn" style="background: rgba(0,245,255,0.2);" onclick="setMode('live')">LIVE CAM</button>
+          <button id="btn-upload" class="hud-btn" onclick="setMode('upload')">UPLOAD</button>
+         <button class="hud-btn" onclick="startPresentationMode()">PRESENT</button>
         </div>
+      </div>
+      
+      <div class="video-container" style="position: relative;">
+        <input type="file" id="videoUploader" accept="video/mp4,video/*" class="hidden" style="position: absolute; z-index: 20; top: 10px; left: 10px; color: #00f5ff; font-family: var(--font-mono); font-size: 10px;" />
+        
+        <video id="sourceVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 5;"></video>
+        
+        <canvas id="captureCanvas" class="hidden"></canvas>
+
         <div class="scan-overlay">
           <div class="scan-line"></div>
           <div class="scan-corners">
-            <div class="corner tl"></div>
-            <div class="corner tr"></div>
-            <div class="corner bl"></div>
-            <div class="corner br"></div>
+            <div class="corner tl"></div><div class="corner tr"></div>
+            <div class="corner bl"></div><div class="corner br"></div>
           </div>
         </div>
-        <div class="lock-indicator">⬡ LOCKED</div>
+        <div class="lock-indicator" id="sensor-status">⬡ SENSORS IDLE</div>
         <div class="face-data">
-          <div id="fd-age">AGE EST: 34±2</div>
-          <div id="fd-conf">MATCH: 91.3%</div>
-          <div id="fd-micro">MICRO: ENGAGED</div>
+          <div id="fd-mode">MODE: STANDBY</div>
+          <div id="fd-wpm" style="color: #b400ff;">AUDIO: OFFLINE</div>
         </div>
       </div>
+      
       <div class="emotion-bars">
         <div class="emo-row">
           <div class="emo-label">CONFIDENCE</div>
-          <div class="emo-track"><div class="emo-fill" id="eb-conf" style="width:78%;background:linear-gradient(90deg,#00f5ff,#00c8ff);"></div></div>
-          <div class="emo-val" id="ev-conf">78</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-conf" style="width:0%;background:linear-gradient(90deg,#00f5ff,#00c8ff);"></div></div>
+          <div class="emo-val" id="ev-conf">0</div>
         </div>
         <div class="emo-row">
           <div class="emo-label">INTEREST</div>
-          <div class="emo-track"><div class="emo-fill" id="eb-int" style="width:65%;background:linear-gradient(90deg,#b400ff,#8800cc);"></div></div>
-          <div class="emo-val" id="ev-int">65</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-int" style="width:0%;background:linear-gradient(90deg,#b400ff,#8800cc);"></div></div>
+          <div class="emo-val" id="ev-int">0</div>
         </div>
         <div class="emo-row">
           <div class="emo-label">RECEPTIVITY</div>
-          <div class="emo-track"><div class="emo-fill" id="eb-rec" style="width:82%;background:linear-gradient(90deg,#00f5d4,#00c4a8);"></div></div>
-          <div class="emo-val" id="ev-rec">82</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-rec" style="width:0%;background:linear-gradient(90deg,#00f5d4,#00c4a8);"></div></div>
+          <div class="emo-val" id="ev-rec">0</div>
         </div>
         <div class="emo-row">
           <div class="emo-label">RESISTANCE</div>
-          <div class="emo-track"><div class="emo-fill" id="eb-res" style="width:22%;background:linear-gradient(90deg,#ff6b35,#cc4422);"></div></div>
-          <div class="emo-val" id="ev-res">22</div>
+          <div class="emo-track"><div class="emo-fill" id="eb-res" style="width:0%;background:linear-gradient(90deg,#ff6b35,#cc4422);"></div></div>
+          <div class="emo-val" id="ev-res">0</div>
         </div>
       </div>
     </div>
 
-    <!-- CENTER: WAVEFORM + GAUGE -->
     <div class="panel center-panel">
       <div class="panel-title">
         COMMUNICATION PULSE
@@ -811,13 +876,13 @@
         </div>
         <div style="text-align:right">
           <div class="sentiment-label">SPEECH RATE</div>
-          <div style="font-family:var(--font-mono);font-size:13px;color:var(--cyan);" id="speech-rate">142 WPM</div>
+          <div style="font-family:var(--font-mono);font-size:13px;color:var(--cyan);" id="speech-rate">0 WPM</div>
         </div>
       </div>
       <div class="gauge-container">
         <div class="gauge-label">PERSUASION LEVEL</div>
         <canvas id="gaugeCanvas" width="140" height="80"></canvas>
-        <div class="gauge-value" id="gauge-val">73%</div>
+        <div class="gauge-value" id="gauge-val">50%</div>
         <div class="gauge-sublabel">DECISION GAUGE · LIVE</div>
       </div>
       <div class="keywords" id="keywords-area">
@@ -830,38 +895,52 @@
       </div>
     </div>
 
-    <!-- RIGHT: TICKER -->
-    <div class="panel ticker-panel">
+    <div class="panel ticker-panel" style="display: flex; flex-direction: column;">
       <div class="panel-title">
-        STRATEGIC INSIGHTS
-        <span class="ptag">LIVE</span>
+        AURA COMMAND CENTER
+        <span class="ptag">MANUAL</span>
       </div>
-      <div class="ticker-scroll">
-        <div class="ticker-inner" id="ticker-inner">
-          <!-- populated by JS -->
+      
+      <div style="padding: 10px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(0,245,255,0.1);">
+        <button class="hud-btn" onclick="requestAuraAnalysis('summary')" style="width: 100%; text-align: left; padding: 8px;">
+          [📊] ANALYZE PROGRESS
+        </button>
+        <button class="hud-btn" onclick="requestAuraAnalysis('strategy')" style="width: 100%; text-align: left; padding: 8px; color: #b400ff; border-color: rgba(180,0,255,0.3);">
+          [💡] GET STRATEGY
+        </button>
+        <button class="hud-btn" onclick="requestAuraAnalysis('alert')" style="width: 100%; text-align: left; padding: 8px; color: #ff6b35; border-color: rgba(255,107,53,0.3);">
+          [⚠️] DETECT ROADBLOCKS
+        </button>
+      </div>
+
+      <div class="ticker-scroll" style="flex: 1; overflow-y: auto; padding: 8px;">
+        <div id="insight-log" style="display: flex; flex-direction: column-reverse; gap: 8px;">
+          <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: center; margin-top: 20px;">
+            AWAITING COMMAND...
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- BOTTOM BAR -->
-    <div class="bottom-bar">
-      <div class="ticker-text">
+    <div class="bottom-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 0 15px;">
+      <div class="ticker-text" style="flex: 1;">
         <span class="ticker-run">
-          ◆ AURA ONLINE · NEURAL CORE v4.2 · GEMINI 1.5 FLASH BACKEND · JSON STREAM ACTIVE · 
+          ◆ AURA ONLINE · NEURAL CORE v4.2 · GEMINI 2.5 FLASH BACKEND · JSON STREAM ACTIVE · 
           PROCESSING 847 TOKENS/SEC · DECISION ENGINE NOMINAL · SENTIMENT ANALYSIS RUNNING · 
           MEMORY CONTEXT: 128K · INTERVENTION THRESHOLD: 40% · ALL SYSTEMS OPERATIONAL ◆ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-          ◆ AURA ONLINE · NEURAL CORE v4.2 · GEMINI 1.5 FLASH BACKEND · JSON STREAM ACTIVE ◆
+          ◆ AURA ONLINE · NEURAL CORE v4.2 · GEMINI 2.5 FLASH BACKEND · JSON STREAM ACTIVE ◆
         </span>
       </div>
-      <div class="bottom-actions">
+      
+      <div class="bottom-actions" style="display: flex; gap: 10px; margin-left: 20px;">
+        <button id="btn-report" class="hud-btn" onclick="generateSessionReport()" style="color: #ff00aa; border-color: rgba(255,0,170,0.3); font-weight: bold; min-width: 160px;">
+          [📝] GENERATE REPORT
+        </button>
         <button class="hud-btn" onclick="triggerIntervention()">⬡ INTERVENE</button>
-        <button class="hud-btn violet-btn" onclick="sendPrompt('Show me the full React/Next.js source code for this AURA dashboard')">{'</>'}  GET CODE ↗</button>
       </div>
     </div>
-
   </div>
 
-  <!-- INTERVENTION CARD (hidden by default) -->
   <div class="intervention-overlay hidden" id="intervention-overlay">
     <div class="intervention-card">
       <div class="intervention-header">
@@ -869,7 +948,7 @@
         <div class="intervention-title">ROADBLOCK DETECTED</div>
       </div>
       <div class="intervention-body" id="intervention-body">
-        Subject exhibiting budget resistance signals. Micro-expressions indicate concern about timeline feasibility. Recommend pivot to ROI-first framing immediately.
+        Subject exhibiting budget resistance signals. Recommend pivot to ROI-first framing immediately.
       </div>
       <div class="intervention-actions">
         <button class="int-btn primary" onclick="dismissIntervention()">EXECUTE PIVOT</button>
@@ -880,11 +959,11 @@
 </div>
 
 <script>
+  let lastInterventionTime = 0;
 // =====================================================
-// MOCK DATA GENERATOR — simulates Gemini 1.5 Flash stream
+// 1. COLORS & CANVASES
 // =====================================================
 const MockDataGenerator = {
-  sentiments: ['RECEPTIVE','ENGAGED','ANALYTICAL','SKEPTICAL','INTERESTED','CAUTIOUS','ENTHUSIASTIC'],
   sentimentColors: {
     'RECEPTIVE': ['#00f5ff','0 0 8px #00f5ff'],
     'ENGAGED': ['#00ff88','0 0 8px #00ff88'],
@@ -893,68 +972,13 @@ const MockDataGenerator = {
     'INTERESTED': ['#00f5d4','0 0 8px #00f5d4'],
     'CAUTIOUS': ['#ffcc00','0 0 8px #ffcc00'],
     'ENTHUSIASTIC': ['#ff00aa','0 0 8px #ff00aa']
-  },
-  keywords: [
-    ['GROWTH','Q4 TARGETS','ROI','SCALABILITY','INNOVATION','PIPELINE'],
-    ['RISK-AVERSE','BUDGET','TIMELINE','COMPLIANCE','DUE DILIGENCE','PRECEDENT']
-  ],
-  generateFrame() {
-    return {
-      timestamp: Date.now(),
-      sentiment: this.sentiments[Math.floor(Math.random()*this.sentiments.length)],
-      emotions: {
-        confidence: 55 + Math.random()*40,
-        interest: 40 + Math.random()*55,
-        receptivity: 50 + Math.random()*45,
-        resistance: 5 + Math.random()*50
-      },
-      persuasionLevel: 45 + Math.random()*50,
-      speechRate: Math.floor(100 + Math.random()*80) + ' WPM',
-      roadblockDetected: Math.random() < 0.04,
-      roadblockType: ['Budget objection','Timeline concern','Authority question','Risk aversion','Competitor mention'][Math.floor(Math.random()*5)],
-      insight: this.randomInsight(),
-      confidence: 85 + Math.random()*12
-    };
-  },
-  randomInsight() {
-    const types = ['obs','rec','alrt'];
-    const obs = [
-      'Subject maintains prolonged eye contact — high engagement signal.',
-      'Vocal tonality shifted upward — enthusiasm indicator.',
-      'Micro-expression: genuine smile detected (Duchenne marker).',
-      'Posture opened 12° — trust building confirmed.',
-      'Speech pace decreased — processing complex information.',
-      'Pupil dilation +8% vs baseline — strong interest.',
-    ];
-    const rec = [
-      'Recommend anchoring with social proof data now.',
-      'Transition to scarcity framing — window is optimal.',
-      'Deploy loss-aversion narrative in next 60 seconds.',
-      'Mirror subject vocal tempo to strengthen rapport.',
-      'Introduce third-party validation for credibility boost.',
-      'Invoke reciprocity principle — offer concession now.',
-    ];
-    const alrt = [
-      'ALERT: Resistance spike — reframe value proposition.',
-      'ALERT: Competing priority detected in speech pattern.',
-      'WARNING: Decision fatigue indicators present.',
-    ];
-    const t = types[Math.floor(Math.random()*types.length)];
-    const arr = t==='obs'?obs:t==='rec'?rec:alrt;
-    return { type: t, text: arr[Math.floor(Math.random()*arr.length)] };
   }
 };
 
-// =====================================================
-// WAVEFORM CANVAS (requestAnimationFrame at 60fps)
-// =====================================================
 const waveCanvas = document.getElementById('waveCanvas');
 const wCtx = waveCanvas.getContext('2d');
-let wavePhase = 0;
-let targetAmplitude = 0.6;
-let currentAmplitude = 0.6;
-let waveColor = '#00f5ff';
-let waveColor2 = '#b400ff';
+let wavePhase = 0; let targetAmplitude = 0.6; let currentAmplitude = 0.6;
+let waveColor = '#00f5ff'; let waveColor2 = '#b400ff';
 
 function resizeWave() {
   const rect = waveCanvas.parentElement.getBoundingClientRect();
@@ -969,7 +993,6 @@ function drawWave() {
   currentAmplitude += (targetAmplitude - currentAmplitude) * 0.05;
   const amp = (h/2) * currentAmplitude * 0.8;
 
-  // Draw 3 layered waves
   const configs = [
     { freq: 2.5, speed: 0.03, alpha: 0.9, col: waveColor, lw: 2, yOff: 0 },
     { freq: 4, speed: 0.05, alpha: 0.4, col: waveColor2, lw: 1.5, yOff: 4 },
@@ -977,12 +1000,8 @@ function drawWave() {
   ];
 
   configs.forEach((c, ci) => {
-    wCtx.beginPath();
-    wCtx.strokeStyle = c.col;
-    wCtx.lineWidth = c.lw;
-    wCtx.globalAlpha = c.alpha;
-    wCtx.shadowBlur = 8;
-    wCtx.shadowColor = c.col;
+    wCtx.beginPath(); wCtx.strokeStyle = c.col; wCtx.lineWidth = c.lw; wCtx.globalAlpha = c.alpha;
+    wCtx.shadowBlur = 8; wCtx.shadowColor = c.col;
     for (let x = 0; x <= w; x += 2) {
       const t = (x / w) * Math.PI * 2 * c.freq + wavePhase * c.speed * 60;
       const noise = (Math.random() - 0.5) * 3 * currentAmplitude;
@@ -990,126 +1009,46 @@ function drawWave() {
       x === 0 ? wCtx.moveTo(x, y) : wCtx.lineTo(x, y);
     }
     wCtx.stroke();
-
-    // Fill under first wave
     if (ci === 0) {
       wCtx.lineTo(w, h); wCtx.lineTo(0, h); wCtx.closePath();
       const grad = wCtx.createLinearGradient(0, h/2, 0, h);
       grad.addColorStop(0, waveColor.replace(')',',0.12)').replace('rgb','rgba'));
       grad.addColorStop(1, 'transparent');
-      wCtx.fillStyle = grad;
-      wCtx.globalAlpha = 0.3;
-      wCtx.fill();
+      wCtx.fillStyle = grad; wCtx.globalAlpha = 0.3; wCtx.fill();
     }
-
-    wCtx.globalAlpha = 1;
-    wCtx.shadowBlur = 0;
+    wCtx.globalAlpha = 1; wCtx.shadowBlur = 0;
   });
-
-  wavePhase++;
-  requestAnimationFrame(drawWave);
+  wavePhase++; requestAnimationFrame(drawWave);
 }
 drawWave();
 
-// =====================================================
-// GAUGE CANVAS (radial progress)
-// =====================================================
 const gCanvas = document.getElementById('gaugeCanvas');
 const gCtx = gCanvas.getContext('2d');
 gCanvas.width = 140; gCanvas.height = 80;
-
-let gaugeTarget = 73;
-let gaugeCurrent = 73;
+let gaugeTarget = 50; let gaugeCurrent = 50;
 
 function drawGauge() {
   gaugeCurrent += (gaugeTarget - gaugeCurrent) * 0.03;
-  const cx = 70, cy = 76, r = 56;
-  const startA = Math.PI, endA = 2 * Math.PI;
-  const progressA = startA + (endA - startA) * (gaugeCurrent / 100);
-
+  const cx = 70, cy = 76, r = 56, startA = Math.PI, endA = 2 * Math.PI;
   gCtx.clearRect(0, 0, 140, 80);
+  gCtx.beginPath(); gCtx.arc(cx, cy, r, Math.PI, 2*Math.PI);
+  gCtx.strokeStyle = 'rgba(0,245,255,0.1)'; gCtx.lineWidth = 8; gCtx.lineCap = 'round'; gCtx.stroke();
 
-  // Track
-  gCtx.beginPath();
-  gCtx.arc(cx, cy, r, Math.PI, 2*Math.PI);
-  gCtx.strokeStyle = 'rgba(0,245,255,0.1)';
-  gCtx.lineWidth = 8;
-  gCtx.lineCap = 'round';
-  gCtx.stroke();
-
-  // Progress segments
-  const zones = [
-    { from: 0, to: 40, color: '#ff6b35' },
-    { from: 40, to: 70, color: '#ffcc00' },
-    { from: 70, to: 100, color: '#00f5ff' }
-  ];
-
+  const zones = [ { from: 0, to: 40, color: '#ff6b35' }, { from: 40, to: 70, color: '#ffcc00' }, { from: 70, to: 100, color: '#00f5ff' } ];
   zones.forEach(z => {
-    const pct = gaugeCurrent;
     const zStart = startA + (endA - startA) * (z.from / 100);
-    const zEnd = startA + (endA - startA) * (Math.min(pct, z.to) / 100);
+    const zEnd = startA + (endA - startA) * (Math.min(gaugeCurrent, z.to) / 100);
     if (zEnd <= zStart) return;
-    gCtx.beginPath();
-    gCtx.arc(cx, cy, r, zStart, zEnd);
-    gCtx.strokeStyle = z.color;
-    gCtx.lineWidth = 8;
-    gCtx.lineCap = 'round';
-    gCtx.shadowBlur = 12;
-    gCtx.shadowColor = z.color;
-    gCtx.stroke();
-    gCtx.shadowBlur = 0;
+    gCtx.beginPath(); gCtx.arc(cx, cy, r, zStart, zEnd);
+    gCtx.strokeStyle = z.color; gCtx.lineWidth = 8; gCtx.lineCap = 'round'; gCtx.shadowBlur = 12; gCtx.shadowColor = z.color; gCtx.stroke(); gCtx.shadowBlur = 0;
   });
-
-  // Needle dot
   const needleA = startA + (endA - startA) * (gaugeCurrent / 100);
-  const nx = cx + Math.cos(needleA) * r;
-  const ny = cy + Math.sin(needleA) * r;
-  gCtx.beginPath();
-  gCtx.arc(nx, ny, 5, 0, Math.PI * 2);
-  gCtx.fillStyle = '#fff';
-  gCtx.shadowBlur = 10;
-  gCtx.shadowColor = '#00f5ff';
-  gCtx.fill();
-  gCtx.shadowBlur = 0;
-
+  gCtx.beginPath(); gCtx.arc(cx + Math.cos(needleA) * r, cy + Math.sin(needleA) * r, 5, 0, Math.PI * 2);
+  gCtx.fillStyle = '#fff'; gCtx.shadowBlur = 10; gCtx.shadowColor = '#00f5ff'; gCtx.fill(); gCtx.shadowBlur = 0;
   requestAnimationFrame(drawGauge);
 }
 drawGauge();
 
-// =====================================================
-// TICKER INSIGHTS
-// =====================================================
-const insightData = [
-  { type:'obs', text:'Vocal tonality rising — enthusiasm signal detected.', time:'00:14:21' },
-  { type:'rec', text:'Anchor with social proof — optimal moment now.', time:'00:13:58' },
-  { type:'obs', text:'Subject referenced Q4 twice — budget cycle alignment.', time:'00:13:41' },
-  { type:'alrt', text:'Micro-resistance on timeline — reframe needed.', time:'00:13:20' },
-  { type:'rec', text:'Deploy scarcity framing in next exchange.', time:'00:13:05' },
-  { type:'obs', text:'Pupil dilation +8% vs baseline — strong interest.', time:'00:12:49' },
-  { type:'rec', text:'Mirror subject vocal tempo — rapport window active.', time:'00:12:33' },
-  { type:'obs', text:'Open posture maintained 4 min — trust building.', time:'00:12:10' },
-  { type:'alrt', text:'Competing priority keyword detected: "board meeting".', time:'00:11:55' },
-  { type:'rec', text:'Invoke reciprocity principle — offer concession now.', time:'00:11:38' },
-];
-
-function buildTicker() {
-  const inner = document.getElementById('ticker-inner');
-  const doubled = [...insightData, ...insightData];
-  inner.innerHTML = doubled.map(d => `
-    <div class="insight-card ${d.type === 'rec' ? 'rec' : d.type === 'alrt' ? 'alert' : ''}">
-      <div class="insight-type ${d.type === 'obs' ? 'obs' : d.type === 'rec' ? 'rec' : 'alrt'}">
-        ${d.type === 'obs' ? '◈ OBSERVATION' : d.type === 'rec' ? '◆ RECOMMENDATION' : '⚠ ALERT'}
-      </div>
-      <div class="insight-text">${d.text}</div>
-      <div class="insight-time">${d.time}</div>
-    </div>
-  `).join('');
-}
-buildTicker();
-
-// =====================================================
-// SESSION TIMER
-// =====================================================
 let seconds = 872;
 setInterval(() => {
   seconds++;
@@ -1119,194 +1058,471 @@ setInterval(() => {
   document.getElementById('h-session').textContent = `${h}:${m}:${s}`;
 }, 1000);
 
-// =====================================================
-// MAIN DATA LOOP — simulates WebSocket / Long-Poll stream
-// In production: replace with actual WebSocket to Gemini backend
-// useEffect(() => {
-//   const ws = new WebSocket('wss://your-gemini-backend/stream');
-//   ws.onmessage = (e) => { const frame = JSON.parse(e.data); applyFrame(frame); }
-//   return () => ws.close();
-// }, []);
-// =====================================================
 function applyFrame(frame) {
-  // Sentiment
   const sv = document.getElementById('sentiment-val');
   sv.textContent = frame.sentiment;
   const [col, shadow] = MockDataGenerator.sentimentColors[frame.sentiment] || ['#00f5ff','0 0 8px #00f5ff'];
-  sv.style.color = col;
-  sv.style.textShadow = shadow;
-  waveColor = col;
-  waveColor2 = frame.sentiment === 'SKEPTICAL' ? '#ff6b35' : '#b400ff';
-
-  // Emotions
-  const emo = frame.emotions;
-  const pairs = [['conf','confidence'],['int','interest'],['rec','receptivity'],['res','resistance']];
-  pairs.forEach(([k,v]) => {
-    const val = Math.round(emo[v]);
-    const el = document.getElementById(`eb-${k}`);
-    const ev = document.getElementById(`ev-${k}`);
-    if (el) el.style.width = val + '%';
-    if (ev) ev.textContent = val;
-  });
-
-  // Amplitude from engagement
-  targetAmplitude = 0.3 + (emo.interest / 100) * 0.7;
-
-  // Gauge
+  sv.style.color = col; sv.style.textShadow = shadow;
+  waveColor = col; waveColor2 = frame.sentiment === 'SKEPTICAL' ? '#ff6b35' : '#b400ff';
+  targetAmplitude = 0.3 + (frame.emotions.interest / 100) * 0.7;
   gaugeTarget = frame.persuasionLevel;
-  document.getElementById('gauge-val').textContent = Math.round(frame.persuasionLevel) + '%';
-
-  // Confidence
-  document.getElementById('h-conf').textContent = frame.confidence.toFixed(1) + '%';
-
-  // Speech rate
-  document.getElementById('speech-rate').textContent = frame.speechRate;
-
-  // Intervention
-  if (frame.roadblockDetected) {
-    triggerIntervention(frame.roadblockType);
-  }
 }
 
 // =====================================================
-// REAL GEMINI API INTEGRATION (Video Upload Logic)
+// 2. V2 SENSOR ROUTER (Live Cam vs Upload)
 // =====================================================
+let currentMode = null;
+let webcamStream = null;
+let speechRecognition = null;
+let speechStartTime = null;
+let speechWordBuffer = '';
 
-// 1. Create the hidden canvas for screenshots
-const captureCanvas = document.createElement('canvas');
-captureCanvas.style.display = 'none';
-document.body.appendChild(captureCanvas);
+const sourceVideo   = document.getElementById('sourceVideo');
+const captureCanvas = document.getElementById('captureCanvas');
+const videoUploader = document.getElementById('videoUploader');
+const btnLive       = document.getElementById('btn-live');
+const btnUpload     = document.getElementById('btn-upload');
+const fdMode        = document.getElementById('fd-mode');
+const fdWpm         = document.getElementById('fd-wpm');
+const sensorStatus  = document.getElementById('sensor-status');
 
-// 2. Change the left panel to accept video uploads
-const videoContainer = document.querySelector('.video-container');
-videoContainer.innerHTML = `
-  <input type="file" id="videoUploader" accept="video/mp4,video/*" style="position: absolute; z-index: 10; top: 10px; left: 10px; color: #00f5ff; font-family: var(--font-mono); font-size: 10px;" />
-  <video id="sourceVideo" controls muted style="width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 5;"></video>
-  <div class="face-data" style="z-index: 10;">
-    <div id="fd-conf">STATUS: WAITING FOR UPLOAD</div>
-  </div>
-`;
-
-const videoInput = document.getElementById('videoUploader');
-const sourceVideo = document.getElementById('sourceVideo');
 let analysisInterval = null;
-let lastRealFrame = null; // Store the real data to "jitter" around
+let lastRealFrame = {
+  sentiment: 'ANALYZING...',
+  emotions: { confidence: 50, interest: 50, receptivity: 50, resistance: 50 },
+  persuasionLevel: 50
+};
 
-// 3. When a video is uploaded, play it and start analyzing
-videoInput.addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if(!file) return;
-  
-  sourceVideo.src = URL.createObjectURL(file);
-  sourceVideo.play();
-  document.getElementById('fd-conf').textContent = "STATUS: ANALYZING...";
-  
-  if(analysisInterval) clearInterval(analysisInterval);
-  // Sync with real Gemini API every 8 seconds (safe from 503 errors)
-  analysisInterval = setInterval(analyzeFrame, 8000); 
-});
+function setMode(mode) {
+  currentMode = mode;
+  btnLive.style.background   = mode === 'live'   ? 'rgba(0,245,255,0.2)' : 'transparent';
+  btnUpload.style.background = mode === 'upload' ? 'rgba(0,245,255,0.2)' : 'transparent';
 
-// =====================================================
-// THE MAGIC: UI HEARTBEAT (Runs every 1.2 seconds)
-// =====================================================
-setInterval(() => {
-  if (!lastRealFrame || sourceVideo.paused) return;
+  if (mode === 'live') {
+    videoUploader.classList.add('hidden');
+    fdMode.textContent = 'MODE: LIVE CAM';
+    mediaPipeReady = true; // RE-ENABLE TRACKING WHEN RETURNING TO CAMERA
+    stopWebcam(); startWebcam();
+  } else {
+    videoUploader.classList.remove('hidden');
+    fdMode.textContent = 'MODE: FILE UPLOAD';
+    mediaPipeReady = false; // STOP TRACKING FOR UPLOADS
+    stopWebcam();
+  }
+}
 
-  // Generate a random slight movement (-3% to +3%)
-  const jitter = () => (Math.random() * 6 - 3); 
-
-  // Make the main gauge dance slightly around the real number
-  gaugeTarget = Math.max(0, Math.min(100, lastRealFrame.persuasionLevel + jitter()));
-  const gaugeValEl = document.getElementById('gauge-val');
-  if(gaugeValEl) gaugeValEl.textContent = Math.round(gaugeTarget) + '%';
-
-  // Make the waveform pulse change slightly
-  targetAmplitude = 0.3 + ((lastRealFrame.emotions.interest + jitter()) / 100) * 0.7;
-
-  // Make the 4 side-bars fluctuate
-  const pairs = [['conf','confidence'],['int','interest'],['rec','receptivity'],['res','resistance']];
-  pairs.forEach(([k,v]) => {
-    const val = Math.max(0, Math.min(100, lastRealFrame.emotions[v] + jitter()));
-    const el = document.getElementById(`eb-${k}`);
-    const ev = document.getElementById(`ev-${k}`);
-    if(el) el.style.width = val + '%';
-    if(ev) ev.textContent = Math.round(val);
-  });
-}, 1200);
-
-// 4. Take a screenshot and send to the backend
-async function analyzeFrame() {
-  if (sourceVideo.paused || sourceVideo.ended) return;
-
-  const ctx = captureCanvas.getContext('2d');
-  captureCanvas.width = 640;
-  captureCanvas.height = 360;
-  ctx.drawImage(sourceVideo, 0, 0, captureCanvas.width, captureCanvas.height);
-
-  const base64Image = captureCanvas.toDataURL('image/jpeg').split(',')[1];
-
+async function startWebcam() {
   try {
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64Image })
-    });
+    webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    sourceVideo.srcObject = webcamStream;
+    sourceVideo.style.transform = 'scaleX(-1)';
+    sensorStatus.textContent = '⬡ SENSORS ACTIVE';
+    fdWpm.textContent = 'AUDIO: ONLINE';
+    initSpeechRecognition();
     
-    if (!response.ok) return;
-    const realData = await response.json();
+} catch (err) {
+    // --- EYE-CATCHING CAMERA DENIED WARNING ---
+    fdMode.innerHTML = `<span style="color: #ff2a2a; font-size: 16px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 15px #ff2a2a; animation: blink 1s infinite;">⚠ CAMERA ACCESS DENIED ⚠</span>`;
     
-    // Save the real data so the heartbeat can use it
-    lastRealFrame = {
-      sentiment: realData.sentiment || 'ENGAGED',
-      emotions: {
-        confidence: realData.score || 50,
-        interest: Math.random() * 100, 
-        receptivity: Math.random() * 100,
-        resistance: 100 - (realData.score || 50)
-      },
-      persuasionLevel: realData.score || 50,
-      speechRate: (Math.floor(Math.random() * 40) + 110) + ' WPM', // Fake live WPM
-      roadblockDetected: false,
-      confidence: 99.9
-    };
-    
-    // Apply the big structural updates (Colors, Text, Insights)
-    applyFrame(lastRealFrame);
-    
-    // Add advice to ticker
-    if(realData.advice) {
-        document.getElementById('ticker-inner').innerHTML += `
-        <div class="insight-card rec"><div class="insight-type rec">◆ AI INSIGHT</div>
-        <div class="insight-text">${realData.advice}</div></div>`;
-    }
-
-  } catch (err) {
+    sensorStatus.textContent = '⬡ CAM DENIED'; 
     console.error(err);
   }
 }
 
-// =====================================================
-// INTERVENTION CARD
-// =====================================================
-let interventionTimer = null;
-
-function triggerIntervention(type) {
-  const roadblockMessages = {
-    'Budget objection': 'Subject exhibiting budget resistance signals. Micro-expressions indicate cost concern. Recommend pivot to ROI-first framing and long-term value narrative immediately.',
-    'Timeline concern': 'Timeline anxiety detected in vocal patterns. Subject showing skepticism about delivery speed. Recommend introducing phased delivery model with quick-win milestones.',
-    'Authority question': 'Subject questioning decision authority. Recommend escalation framing — position this as an executive-level strategic initiative.',
-    'Risk aversion': 'High risk-aversion signals detected. Activate social proof sequence — reference similar successful deployments immediately.',
-    'Competitor mention': 'Competitor reference detected. Engage competitive differentiation protocol — lead with unique advantages now.'
-  };
-  const overlay = document.getElementById('intervention-overlay');
-  const body = document.getElementById('intervention-body');
-  body.textContent = roadblockMessages[type] || 'Anomalous engagement pattern detected. Subject signaling uncertainty. Recommend clarifying value proposition and restating key differentiators.';
-  overlay.classList.remove('hidden');
-  if (interventionTimer) clearTimeout(interventionTimer);
-  interventionTimer = setTimeout(dismissIntervention, 8000);
+function stopWebcam() {
+  if (webcamStream) { webcamStream.getTracks().forEach(track => track.stop()); webcamStream = null; }
+  sourceVideo.srcObject = null; sourceVideo.style.transform = '';
+  if (speechRecognition) { speechRecognition.stop(); speechRecognition = null; }
+  fdWpm.textContent = 'AUDIO: OFFLINE'; sensorStatus.textContent = '⬡ SENSORS IDLE';
+  if(analysisInterval) clearInterval(analysisInterval);
 }
 
-function dismissIntervention() {
-  document.getElementById('intervention-overlay').classList.add('hidden');
+videoUploader.addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  sourceVideo.src = URL.createObjectURL(file);
+  sourceVideo.play();
+  sensorStatus.textContent = '⬡ FILE LOADED';
+});
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { fdWpm.textContent = 'AUDIO: UNSUPPORTED'; return; }
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.continuous = true; speechRecognition.interimResults = true;
+  speechStartTime = Date.now(); speechWordBuffer = '';
+
+  speechRecognition.onresult = function (event) {
+    let interim = ''; let finalT = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) finalT += event.results[i][0].transcript + ' ';
+      else interim += event.results[i][0].transcript;
+    }
+    speechWordBuffer += finalT;
+    const count = (speechWordBuffer + interim).trim().split(/\s+/).filter(Boolean).length;
+    const mins = (Date.now() - speechStartTime) / 60000;
+    const wpm = mins > 0 ? Math.round(count / mins) : 0;
+    
+    fdWpm.textContent = `AUDIO: ${wpm} WPM`;
+    document.getElementById('speech-rate').textContent = `${wpm} WPM`;
+  };
+  speechRecognition.onend = () => { if (currentMode === 'live' && webcamStream) speechRecognition.start(); };
+  speechRecognition.start();
+}
+
+// =====================================================
+// 3. EDGE AI: MEDIAPIPE FACE ENGINE (60 FPS)
+// =====================================================
+let faceLandmarker = null;
+let mediaPipeReady = false;
+
+async function initMediaPipe() {
+  try {
+    sensorStatus.textContent = '⬡ LOADING AI...';
+    const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3');
+    const filesetResolver = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm');
+    
+    faceLandmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        delegate: 'GPU'
+      },
+      outputFaceBlendshapes: true,
+      runningMode: 'VIDEO',
+      numFaces: 1
+    });
+
+    mediaPipeReady = true;
+    sensorStatus.textContent = '⬡ AI ACTIVE';
+    renderFrame(); // Start the loop
+  } catch (err) {
+    sensorStatus.textContent = '⬡ AI FAILED';
+    console.error('[AURA] MediaPipe error:', err);
+  }
+}
+
+// Extract specific muscle movements
+function getBlendshape(categories, name) {
+  const match = categories.find(c => c.categoryName === name);
+  return match ? match.score : 0;
+}
+
+// 60FPS Render Loop + Sentiment Matrix
+// =====================================================
+function renderFrame() {
+  requestAnimationFrame(renderFrame);
+  if (!mediaPipeReady || !faceLandmarker || sourceVideo.paused || sourceVideo.readyState < 2) return;
+
+  const results = faceLandmarker.detectForVideo(sourceVideo, performance.now());
+  if (!results.faceBlendshapes || results.faceBlendshapes.length === 0) return;
+
+  const cats = results.faceBlendshapes[0].categories;
+
+  // 1. Extract Muscle Movements
+  const smile = (getBlendshape(cats, 'mouthSmileLeft') + getBlendshape(cats, 'mouthSmileRight')) / 2;
+  const browDown = (getBlendshape(cats, 'browDownLeft') + getBlendshape(cats, 'browDownRight')) / 2;
+  const jawOpen = getBlendshape(cats, 'jawOpen');
+
+  // 2. Map to 0-100 AURA Metrics
+  const receptivityScore = Math.min(100, Math.round(smile * 160));
+  const resistanceScore = Math.min(100, Math.round(browDown * 180));
+  const interestScore = Math.min(100, Math.round(jawOpen * 85));
+
+  lastRealFrame.emotions.receptivity = receptivityScore;
+  lastRealFrame.emotions.resistance = resistanceScore;
+  lastRealFrame.emotions.interest = interestScore;
+  
+  // Calculate Persuasion Gauge
+  let pLevel = 50 + (receptivityScore * 0.3) + (interestScore * 0.2) - (resistanceScore * 0.4);
+  lastRealFrame.persuasionLevel = Math.max(0, Math.min(100, pLevel));
+
+  // ── Claude's Sentiment Evaluation ─────────────────────────────────────────
+  let detectedSentiment;
+  let activeColor;
+
+  if (receptivityScore > 70 && interestScore > 50) {
+    detectedSentiment = 'HIGHLY ENGAGED';
+    activeColor       = '#ff00aa';
+  } else if (resistanceScore > 65) {
+    detectedSentiment = 'AGGRESSIVE';
+    activeColor       = '#ff2a2a';
+  } else if (resistanceScore > 35) {
+    detectedSentiment = 'SKEPTICAL';
+    activeColor       = '#ff6b35';
+  } else if (receptivityScore > 40) {
+    detectedSentiment = 'RECEPTIVE';
+    activeColor       = '#00ff88';
+  } else if (interestScore > 50) {
+    detectedSentiment = 'ANALYTICAL';
+    activeColor       = '#b400ff';
+  } else if (receptivityScore < 20 && resistanceScore < 20 && interestScore < 20) {
+    detectedSentiment = 'UNINTERESTED';
+    activeColor       = '#888888';
+  } else {
+    detectedSentiment = 'NEUTRAL';
+    activeColor       = '#00f5ff';
+  }
+
+  // ── DOM Update ─────────────────────────────────────────────────────────────
+  const sentimentEl = document.getElementById('sentiment-val');
+
+  // ONLY update the DOM if the mood actually changed (Saves massive CPU power!)
+  if (sentimentEl && sentimentEl.textContent !== detectedSentiment) {
+    sentimentEl.textContent        = detectedSentiment;
+    sentimentEl.style.color        = activeColor;
+    sentimentEl.style.textShadow   = `0 0 12px ${activeColor}`;
+  }
+
+  // ── Global Wave Color Sync ─────────────────────────────────────────────────
+  waveColor  = activeColor;
+  waveColor2 = resistanceScore > 40 ? '#ff6b35' : '#b400ff';
+
+ // ── Update Dials and Bars ──────────────────────────────────────────────────
+  document.getElementById('gauge-val').textContent = Math.round(lastRealFrame.persuasionLevel) + '%';
+  gaugeTarget = lastRealFrame.persuasionLevel; // <-- ADD THIS LINE
+  targetAmplitude = 0.3 + (interestScore / 100) * 0.7;
+
+  const pairs = [['rec','receptivity'],['res','resistance'],['int','interest']];
+  pairs.forEach(([k,v]) => {
+    const el = document.getElementById(`eb-${k}`);
+    const ev = document.getElementById(`ev-${k}`);
+    if(el) el.style.width = lastRealFrame.emotions[v] + '%';
+    if(ev) ev.textContent = Math.round(lastRealFrame.emotions[v]);
+  });
+  
+  // --- FOOLPROOF AUTO-INTERVENTION LOGIC ---
+  // --- TIMESTAMP AUTO-INTERVENTION ---
+if (lastRealFrame.emotions.resistance > 75) {
+    const now = Date.now();
+    // Check if 5 minutes (300,000 ms) have passed since the last trigger
+    if (now - lastInterventionTime > 300000 || lastInterventionTime === 0) { 
+        lastInterventionTime = now;
+        console.log("🚨 AUTO-TRIGGER FIRED!");
+        requestAuraAnalysis('alert');
+    }
+}
+}
+
+// Boot up MediaPipe immediately
+initMediaPipe();
+async function analyzeFrame() {
+  if (sourceVideo.paused || sourceVideo.ended) return;
+  const ctx = captureCanvas.getContext('2d');
+  captureCanvas.width = 640; captureCanvas.height = 360;
+  ctx.drawImage(sourceVideo, 0, 0, captureCanvas.width, captureCanvas.height);
+  const base64Image = captureCanvas.toDataURL('image/jpeg').split(',')[1];
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64Image })
+    });
+    if (!res.ok) return;
+    const realData = await res.json();
+    lastRealFrame = {
+      sentiment: realData.sentiment || 'ENGAGED',
+      emotions: { confidence: realData.score || 50, interest: Math.random()*100, receptivity: Math.random()*100, resistance: 100 - (realData.score || 50) },
+      persuasionLevel: realData.score || 50,
+      speechRate: document.getElementById('speech-rate').textContent,
+      roadblockDetected: false, confidence: 99.9
+    };
+    applyFrame(lastRealFrame);
+    if(realData.advice) {
+      document.getElementById('ticker-inner').innerHTML += `<div class="insight-card rec"><div class="insight-type rec">◆ AI INSIGHT</div><div class="insight-text">${realData.advice}</div></div>`;
+    }
+  } catch (e) { console.error(e); }
+}
+
+let interventionTimer = null;
+function triggerIntervention() {
+  document.getElementById('intervention-overlay').classList.remove('hidden');
+  if (interventionTimer) clearTimeout(interventionTimer);
+  interventionTimer = setTimeout(() => { document.getElementById('intervention-overlay').classList.add('hidden'); }, 8000);
+}
+function dismissIntervention() { document.getElementById('intervention-overlay').classList.add('hidden'); }
+
+// BOOT UP!
+setMode('live');
+
+// =====================================================
+// 4. ON-DEMAND COMMAND CENTER (Manual Triggers)
+// =====================================================
+async function requestAuraAnalysis(intent) {
+  // ── 1. Visual Feedback ─────────────────────────────────────────────────
+  const videoContainer = document.querySelector('.video-container');
+  videoContainer.classList.add('scanning-active');
+  setTimeout(() => videoContainer.classList.remove('scanning-active'), 500);
+
+  sourceVideo.style.filter = "brightness(2)";
+  setTimeout(() => sourceVideo.style.filter = "none", 150);
+
+  // ── 2. Frame Capture ───────────────────────────────────────────────────
+  const canvas = document.getElementById('captureCanvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  canvas.getContext('2d').drawImage(sourceVideo, 0, 0, 640, 360);
+  const imageBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+
+  // ── 3. UI Loading State ────────────────────────────────────────────────
+  const loadingId = 'L-' + Date.now();
+  const insightLog = document.getElementById('insight-log');
+  
+  // (Restored the blinking neon styling)
+  insightLog.insertAdjacentHTML('afterbegin', 
+    `<div id="${loadingId}" style="color:var(--cyan); font-family:var(--font-mono); font-size:10px; animation:blink 1s infinite;">
+      ⬡ PROCESSING VISUAL TELEMETRY...
+    </div>`
+  );
+
+  // ── 4. Multimodal Payload ──────────────────────────────────────────────
+  const isPresentation = document.getElementById('fd-mode').textContent.includes('PRESENTATION');
+
+  const payload = {
+    intent:  intent,
+    target:  isPresentation ? 'slides' : 'face',
+    image:   imageBase64,
+    // (Restored the .replace to ensure we send a clean number to the backend)
+    wpm:     Number(document.getElementById('speech-rate').textContent.replace(' WPM','')),
+    metrics: lastRealFrame.emotions,
+  };
+
+  // ── 5. API Call & DOM Updates ──────────────────────────────────────────
+  try {
+    const response = await fetch('/api/analyze', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+
+    if (!response.ok) throw new Error("API limits");
+    const realData = await response.json();
+
+    // Remove loading placeholder
+    document.getElementById(loadingId)?.remove();
+
+    // Resolve card CSS class and prefix from intent
+    let typeText = "◆ VISUAL SUMMARY";
+    let cssClass = ""; 
+    if(intent === 'strategy') { typeText = "◆ STRATEGY PIVOT"; cssClass = "rec"; } 
+    if(intent === 'alert') { typeText = "⚠ ROADBLOCK ALERT"; cssClass = "alert"; } 
+
+    // Prepend result card (Restored the tight UI styling)
+    insightLog.insertAdjacentHTML(
+      'afterbegin',
+      `<div class="insight-card ${cssClass}" style="animation: interventionIn 0.4s ease-out;">
+         <div class="insight-type ${cssClass}">${typeText}</div>
+         <div class="insight-text">${realData.advice}</div>
+       </div>`
+    );
+
+    // [NEW] Alert intervention trigger!
+    if (intent === 'alert') {
+      document.getElementById('intervention-body').textContent = realData.advice;
+      triggerIntervention();
+    }
+
+    // Update sentiment & gauge if present
+    if (realData.sentiment) {
+      document.getElementById('sentiment-val').textContent = realData.sentiment;
+      document.getElementById('gauge-val').textContent     = realData.score + '%';
+      lastRealFrame.score = realData.score;
+      // Tell the canvas animation engine to move to the new score!
+      gaugeTarget = realData.score;
+    }
+
+  } catch (error) {
+    const errEl = document.getElementById(loadingId);
+    if(errEl) errEl.textContent = '⚠ UPLOAD FAILED. CHECK QUOTA.';
+  }
+}
+// =====================================================
+// 5. SESSION RECAP (Post-Match Analysis)
+// =====================================================
+async function generateSessionReport() {
+  const log = document.getElementById('insight-log');
+  
+  // Scrape all the advice cards currently in your sidebar
+  const allInsights = Array.from(document.querySelectorAll('.insight-text'))
+                           .map(el => el.innerText)
+                           .reverse() // Put them in chronological order
+                           .join("\n---\n");
+
+  if (!allInsights) {
+    alert("No telemetry data found. Analyze a few frames first!");
+    return;
+  }
+
+  const btn = document.getElementById('btn-report');
+  const originalText = btn.textContent;
+  btn.textContent = "⬡ COMPILING...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'report',
+        transcript: allInsights, 
+        image: "", // No image needed for text report
+        wpm: document.getElementById('speech-rate').textContent,
+        metrics: { receptivity: 50, resistance: 50 } 
+      })
+    });
+
+    const report = await res.json();
+    
+    // Create the HUD Overlay
+    const overlay = document.createElement('div');
+    overlay.id = "report-overlay";
+    overlay.style = "position:fixed; inset:0; background:rgba(3,5,15,0.98); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(10px); animation: fadeIn 0.3s ease;";
+    
+    overlay.innerHTML = `
+      <div class="panel" style="max-width:700px; width:100%; border-color:#ff00aa; box-shadow: 0 0 40px rgba(255,0,170,0.15); max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="panel-title" style="font-size:22px; color:#ff00aa;">AURA SESSION SCORECARD</div>
+        
+        <div style="padding:25px; font-family:var(--font-mono); overflow-y: auto; flex: 1;">
+           <div style="font-size:20px; margin-bottom:15px; color:var(--cyan); border-bottom: 1px solid var(--cyan-dim); padding-bottom: 10px;">
+             OVERALL SENTIMENT: ${report.sentiment} | PERFORMANCE: ${report.score}/100
+           </div>
+           <div style="line-height:1.7; color:var(--text-primary); white-space: pre-wrap; font-size: 14px;">
+             ${report.advice}
+           </div>
+        </div>
+
+        <div style="padding: 15px; border-top: 1px solid rgba(255,0,170,0.1); text-align: center;">
+           <button class="hud-btn" onclick="document.getElementById('report-overlay').remove()" style="width:200px;">[✖] CLOSE DEBRIEF</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+  } catch (e) {
+    console.error("Report generation failed", e);
+    alert("Connection lost. Gemini could not compile the report.");
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+// =====================================================
+// 6. PRESENTATION MODE
+// =====================================================
+async function startPresentationMode() { 
+  document.querySelectorAll('.hud-btn').forEach(btn => {
+        btn.style.backgroundColor = btn.textContent.includes('PRESENT') ? 'rgba(0, 245, 255, 0.2)' : 'transparent';
+    });
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const video = document.getElementById('sourceVideo');
+    video.srcObject = stream;
+    video.play();
+    video.style.transform = 'none'; // Do not mirror slides
+
+    document.getElementById('fd-mode').textContent = 'MODE: PRESENTATION';
+    document.getElementById('sensor-status').textContent = '⬡ ANALYZING VISUALS';
+    mediaPipeReady = false; // Turn off face tracking
+  } catch (err) {
+    console.error("Screen Share Denied");
+  }
 }
 </script>
