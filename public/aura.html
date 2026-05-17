@@ -1106,7 +1106,7 @@ function setMode(mode) {
   } else {
     videoUploader.classList.remove('hidden');
     fdMode.textContent = 'MODE: FILE UPLOAD';
-    mediaPipeReady = false; // STOP TRACKING FOR UPLOADS
+    mediaPipeReady = true; // <-- THIS IS KILLING THE AI LOOP
     stopWebcam();
   }
 }
@@ -1143,6 +1143,7 @@ videoUploader.addEventListener('change', function () {
   sourceVideo.src = URL.createObjectURL(file);
   sourceVideo.play();
   sensorStatus.textContent = '⬡ FILE LOADED';
+  mediaPipeReady = true; // RESTART TRACKING FOR THE NEW VIDEO
 });
 
 function initSpeechRecognition() {
@@ -1515,12 +1516,18 @@ async function startPresentationMode() {
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
     const video = document.getElementById('sourceVideo');
     video.srcObject = stream;
-    video.play();
+    
+    // Ensure the video is fully playing before AI takes over
+    await video.play();
+    
     video.style.transform = 'none'; // Do not mirror slides
 
     document.getElementById('fd-mode').textContent = 'MODE: PRESENTATION';
     document.getElementById('sensor-status').textContent = '⬡ ANALYZING VISUALS';
-    mediaPipeReady = false; // Turn off face tracking
+    
+    // THE FIX: Keep the AI engine ON so your graphs and meters keep updating
+    mediaPipeReady = true; 
+    
   } catch (err) {
     console.error("Screen Share Denied");
   }
